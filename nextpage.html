@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Playlist Player</title>
+    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        /* Styling for the control panel */
+        .control-panel {
+            display: flex;
+            justify-content: center;
+            position: relative;
+            margin-top: 10px;
+        }
+        .control-button {
+            background-color: #ff0000;
+            color: #fff;
+            border: none;
+            padding: 15px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+            border-radius: 50%;
+            font-size: 20px;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .control-button:hover {
+            background-color: #cc0000;
+        }
+        /* Styling for the video list */
+        .video-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 20px auto;
+            text-align: left;
+            overflow-y: auto; /* Enable vertical scrollbar */
+            max-height: 400px; /* Set maximum height for the list */
+        }
+        .video-item {
+            cursor: pointer;
+            padding: 10px;
+            transition: background-color 0.3s;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            font-size: 14px; /* Adjust font size */
+        }
+        .video-item:hover {
+            background-color: #f0f0f0;
+        }
+        /* Responsive video player */
+        #player-container {
+            width: 100%;
+            height: 25%;
+            margin: 0 auto; /* Center the player horizontally */
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio (9 / 16 * 100%) */
+            overflow: hidden; /* Hide any overflowing content */
+        }
+        #player {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- YouTube video player container -->
+    <div id="player-container">
+        <div id="player"></div>
+    </div>
+    <br>
+    <!-- Control panel -->
+    <div class="control-panel">
+        <button class="control-button" id="prevButton"><i class="fas fa-backward"></i></button>
+        <button class="control-button" id="startButton"><i class="fas fa-play"></i></button>
+        <button class="control-button" id="pauseButton"><i class="fas fa-pause"></i></button>
+        <button class="control-button" id="replayButton"><i class="fas fa-redo"></i></button>
+        <button class="control-button" id="nextButton"><i class="fas fa-forward"></i></button>
+        
+    </div>
+    
+    <!-- Video list -->
+    <ul class="video-list" id="videoList"></ul>
+
+    <script>
+
+        let player;
+        let startTime = 0;
+        let pauseTime = 0;
+
+        // Function to extract playlist ID from URL
+        function extractPlaylistId(url) {
+            const regex = /[&?]list=([a-zA-Z0-9_-]+)/;
+            const match = url.match(regex);
+            if (match) {
+                return match[1];
+            }
+            return null;
+        }
+
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // Get URL and key from query parameters
+        const playlistUrl = getQueryParam('url');
+        const apiKey = getQueryParam('key');
+
+        async function fetchVideoTitle(videoId) {
+        const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet&key=${apiKey}`;
+
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) {
+                throw new Error('Failed to fetch video title');
+            }
+            const data = await response.json();
+            if (data.items.length > 0) {
+                return data.items[0].snippet.title;
+            } else {
+                throw new Error('Video not found');
+            }
+        } catch (error) {
+            console.error('Error fetching video title:', error.message);
+            return 'Unknown Title';
+        }
+    }
+
+        // YouTube Player API callback function
+        function onYouTubeIframeAPIReady() {
+            // Extract playlist ID from URL
+            const playlistId = extractPlaylistId(playlistUrl);
+
+            if (playlistId) {
+                // Create a new YT.Player instance
+                const player = new YT.Player('player', {
+                    height: '100%',
+                    width: '100%', // Set width to 100% to make it responsive
+                    playerVars: {
+                        'listType': 'playlist',
+                        'list': playlistId
+                    },
+                    events: {
+                        'onReady': onPlayerReady
+                    }
+                });
+
+                // Event handler for when the player is ready
+                function onPlayerReady(event) {
+                    // Get the playlist items
+                    const playlistItems = player.getPlaylist();
+                    console.log(playlistItems)
+
+                   // Populate the video list
+                   const videoListElement = document.getElementById('videoList');
+                    playlistItems.forEach(function(video, index) {
+                        const listItem = document.createElement('li');
+                        fetchVideoTitle(video)
+                        .then(title => {
+                            console.log('Video Title:', title);
+                            const textNode = document.createTextNode(title);
+                            listItem.appendChild(textNode);
+                        })
+                        .catch(error => {
+                            console.error('Error:', error.message);
+                            const textNode = document.createTextNode(error.message);
+                            listItem.appendChild(textNode);
+                        });
+                        
+                        listItem.className = 'video-item';
+                        listItem.addEventListener('click', function() {
+                            player.playVideoAt(index);
+                        });
+                        videoListElement.appendChild(listItem);
+                        
+                    });
+
+                    const prevButton = document.getElementById('prevButton').addEventListener('click', function() {
+                        player.previousVideo();
+                    });
+
+                    const nextButton = document.getElementById('nextButton').addEventListener('click', function() {
+                        player.nextVideo();
+                    });
+                    const startButton = document.getElementById('startButton').addEventListener('click', function (){
+                        player.playVideo()
+                        startTime = player.getCurrentTime()
+                        pauseTime = 0
+                        console.log(`Start at ${startTime}`)
+                    });
+                    const pauseButton = document.getElementById('pauseButton').addEventListener('click', function (){
+                        player.pauseVideo()
+                        pauseTime = player.getCurrentTime()
+                        console.log(`Pause at ${pauseTime}`)
+                    });
+                    const replayButton = document.getElementById('replayButton').addEventListener('click', function (){
+                        player.seekTo(startTime)
+                        player.playVideo()
+                        console.log(`Replay at ${startTime}`)
+                    });
+                    setInterval(function() {
+                        if(YT.PlayerState.PLAYING == player.getPlayerState() && pauseTime != 0){
+                            // Get the current time of the video
+                            const currentTime = player.getCurrentTime();
+
+                            // If the current time exceeds the pause time, pause the video
+                            if (currentTime >= pauseTime ) {
+                                player.pauseVideo();
+                            }
+                        }
+                    }, 1000); // Check every second (1000 milliseconds)
+                    
+                }
+            } else {
+                console.error('Invalid playlist URL');
+            }
+        }
+    </script>
+
+    <!-- Load the YouTube IFrame Player API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Player</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #ff0000;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 70vh;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffffff;
+            /* margin-top: 20px; */
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #urlForm {
+            width: 90%;
+            max-width: 400px;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+            font-size: 11px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            /* margin-top: 10px; */
+            box-sizing: border-box;
+        }
+
+        button[type="submit"] {
+            background-color: #ff0000;
+            color: #fff;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>YouTube Player for listening</h1>
+        <form id="urlForm">
+            <label>This page is developed by Nguyen Duy Viet.</label>
+            <label>Only for English listening purpose.</label>
+            <br>
+            <br>
+            <input type="text" id="url" name="url" placeholder="Enter YouTube URL" required><br><br>
+            <!-- <label for="key">Key:</label> -->
+            <input type="text" id="key" name="key" placeholder="Enter Key" required><br><br>
+            <button type="submit"><i class="fas fa-play"></i> Start Listening</button>
+        </form>
+    </div>
+
+    <script>
+        // Check if URL and key are stored in localStorage
+        const storedUrl = localStorage.getItem('url');
+        const storedKey = localStorage.getItem('key');
+
+        // Set input values from localStorage if available
+        if (storedUrl) {
+            document.getElementById('url').value = storedUrl;
+        }
+        if (storedKey) {
+            document.getElementById('key').value = storedKey;
+        }
+
+        // Event listener for form submission
+        document.getElementById('urlForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+            const url = document.getElementById('url').value; // Get URL value
+            const key = document.getElementById('key').value; // Get key value
+            // Save URL and key to localStorage
+            localStorage.setItem('url', url);
+            localStorage.setItem('key', key);
+            // Navigate to the new page with URL and key as query parameters
+            window.location.href = 'nextpage.html?url=' + encodeURIComponent(url) + '&key=' + encodeURIComponent(key);
+        });
+    </script>
+</body>
+</html>
