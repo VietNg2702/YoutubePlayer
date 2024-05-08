@@ -13,6 +13,8 @@
             justify-content: center;
             position: relative;
             margin-top: 10px;
+            height: 50px;
+            width: 100%;
         }
         .control-button {
             background-color: #ff0000;
@@ -22,7 +24,7 @@
             margin: 0 10px;
             cursor: pointer;
             border-radius: 50%;
-            font-size: 20px;
+            font-size: 15px;
             transition: background-color 0.3s;
             display: flex;
             align-items: center;
@@ -39,11 +41,27 @@
             margin: 20px auto;
             text-align: left;
             overflow-y: auto; /* Enable vertical scrollbar */
-            max-height: 400px; /* Set maximum height for the list */
+            max-height: 370px; /* Set maximum height for the list */
         }
+        .thumbnail {
+            width: 100px; /* Adjust thumbnail width as needed */
+            height: auto; /* Maintain aspect ratio */
+            margin-right: 10px;
+        }
+
+        .video-info {
+            flex-grow: 1;
+        }
+
+        .title {
+            color: #cc0000;
+            font-size: 14px;
+        }
+
         .video-item {
             cursor: pointer;
             padding: 10px;
+            color: #555;
             transition: background-color 0.3s;
             border-radius: 5px;
             margin-bottom: 5px;
@@ -70,6 +88,54 @@
             top: 0;
             left: 0;
         }
+        label {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #555;
+            font-size: 11px;
+        }
+        #urlForm {
+            width: 90%;
+            max-width: 400px;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            /* margin-top: 10px; */
+            box-sizing: border-box;
+            height: 32px;
+        }
+        input[type="checkbox"] {
+            margin-bottom: 5px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            box-sizing: border-box;
+            margin-right: 20px;
+            width: 30px; /* Increase checkbox size */
+            height: 30px; /* Increase checkbox size */
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+        select {
+            width: 50px;
+            height: 30px;
+            align-items: center;
+        }
+
     </style>
 </head>
 <body>
@@ -77,6 +143,31 @@
     <div id="player-container">
         <div id="player"></div>
     </div>
+    <table>
+        <tr>
+            <th><label>Start at</label></th>
+            <th><label>Pause at</label></th>
+            <th><label>Repeat</label></th>
+            <th><label>Next</label></th>
+            <th><label>Speed</label></th>
+        </tr>
+        <tr>
+            <td><input type="number" id="startAt" name="startAt" ></td>
+            <td><input type="number" id="pauseAt" name="pauseAt" ></td>
+            <td><input type="checkbox" id="autoRepeat" name="autoRepeat" value="True"></td>
+            <td><input type="checkbox" id="autoNext" name="autoNext"  value="True"></td>
+            <td style="border-radius: 5px;" colspan="2">
+                <select id="speed" name="speed">
+                    <option value="0.5">0.5</option>
+                    <option value="0.75">0.75</option>
+                    <option value="1" selected>1</option>
+                    <option value="1.25">1.25</option>
+                    <option value="1.5">1.5</option>
+                    <option value="2">2</option>
+                </select>
+            </td>
+        </tr>
+    </table>
     <br>
     <!-- Control panel -->
     <div class="control-panel">
@@ -85,9 +176,8 @@
         <button class="control-button" id="pauseButton"><i class="fas fa-pause"></i></button>
         <button class="control-button" id="replayButton"><i class="fas fa-redo"></i></button>
         <button class="control-button" id="nextButton"><i class="fas fa-forward"></i></button>
-        
     </div>
-    
+    <br>
     <!-- Video list -->
     <ul class="video-list" id="videoList"></ul>
 
@@ -96,6 +186,8 @@
         let player;
         let startTime = 0;
         let pauseTime = 0;
+        let autoNextFlag = false;
+        let autoRepeatFlag = false;
 
         // Function to extract playlist ID from URL
         function extractPlaylistId(url) {
@@ -116,7 +208,7 @@
         const playlistUrl = getQueryParam('url');
         const apiKey = getQueryParam('key');
 
-        async function fetchVideoTitle(videoId) {
+        async function fetchVideo(videoId) {
         const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet&key=${apiKey}`;
 
         try {
@@ -126,7 +218,8 @@
             }
             const data = await response.json();
             if (data.items.length > 0) {
-                return data.items[0].snippet.title;
+                console.log(data.items[0].snippet)
+                return data.items[0].snippet;
             } else {
                 throw new Error('Video not found');
             }
@@ -161,28 +254,48 @@
                     const playlistItems = player.getPlaylist();
                     console.log(playlistItems)
 
-                   // Populate the video list
-                   const videoListElement = document.getElementById('videoList');
+                    // Populate the video list
+                    const videoList = document.getElementById('videoList');
+                    videoList.innerHTML = '';
                     playlistItems.forEach(function(video, index) {
+                        
+                        // Create list item element
                         const listItem = document.createElement('li');
-                        fetchVideoTitle(video)
-                        .then(title => {
-                            console.log('Video Title:', title);
-                            const textNode = document.createTextNode(title);
-                            listItem.appendChild(textNode);
+                        listItem.classList.add('video-item');
+                        listItem.addEventListener('click', function() {
+                            player.playVideoAt(index);
+                        });
+
+                        fetchVideo(video)
+                        .then(snippet => {
+                            const table = document.createElement('table');
+                            const thumbnail_slot = document.createElement('td')
+                            // console.log('Video Thumbnail:', snippet.thumbnails.default.url);
+                            const thumbnail = document.createElement('img');
+                            thumbnail.classList.add('thumbnail');
+                            thumbnail.src = snippet.thumbnails.default.url;
+                            thumbnail.alt = snippet.title;
+                            thumbnail_slot.appendChild(thumbnail)
+
+
+                            const title_slot = document.createElement('td')
+                            title_slot.style.alignContent = "center"
+                            // console.log('Video Title:', snippet.title);
+                            const textNode = document.createTextNode(snippet.title);
+                            title_slot.appendChild(textNode)
+                            table.appendChild(thumbnail_slot)
+                            table.appendChild(title_slot)
+                            listItem.appendChild(table);
                         })
                         .catch(error => {
                             console.error('Error:', error.message);
                             const textNode = document.createTextNode(error.message);
                             listItem.appendChild(textNode);
                         });
-                        
-                        listItem.className = 'video-item';
-                        listItem.addEventListener('click', function() {
-                            player.playVideoAt(index);
-                        });
-                        videoListElement.appendChild(listItem);
-                        
+
+
+                        // Append the list item to the video list
+                        videoList.appendChild(listItem);
                     });
 
                     const prevButton = document.getElementById('prevButton').addEventListener('click', function() {
@@ -194,8 +307,9 @@
                     });
                     const startButton = document.getElementById('startButton').addEventListener('click', function (){
                         player.playVideo()
-                        startTime = player.getCurrentTime()
-                        pauseTime = 0
+                        if(startTime == 0 ){
+                            startTime = player.getCurrentTime()
+                        }
                         console.log(`Start at ${startTime}`)
                     });
                     const pauseButton = document.getElementById('pauseButton').addEventListener('click', function (){
@@ -208,17 +322,61 @@
                         player.playVideo()
                         console.log(`Replay at ${startTime}`)
                     });
-                    setInterval(function() {
-                        if(YT.PlayerState.PLAYING == player.getPlayerState() && pauseTime != 0){
-                            // Get the current time of the video
-                            const currentTime = player.getCurrentTime();
 
-                            // If the current time exceeds the pause time, pause the video
+                    const startAt = document.getElementById('startAt').addEventListener("focusout", function (){
+                        startTime = parseFloat(this.value);
+                        console.log(`set startAt = ${startTime}`)
+                    })
+
+                    const pauseAt = document.getElementById('pauseAt').addEventListener("focusout", function (){
+                        pauseTime = parseFloat(this.value);
+                        console.log(`set pauseAt = ${pauseTime}`)
+                    })
+
+                    const autoRepeat = document.getElementById('autoRepeat').addEventListener("change", function(){
+                        autoRepeatFlag = (!autoRepeatFlag); 
+                        console.log(autoRepeatFlag);
+                    })
+
+                    const autoNext = document.getElementById('autoNext').addEventListener("change", function(){
+                        autoNextFlag = (!autoNextFlag); 
+                        console.log(autoNextFlag);
+                    })
+
+                    const speedSelect = document.getElementById("speed");
+
+                    // Listen for changes in the select dropdown
+                    speedSelect.addEventListener("change", function() {
+                        const speedValue = parseFloat(this.value);
+                        updatePlayerSpeed(speedValue);
+                    });
+
+                    // Function to update player speed
+                    function updatePlayerSpeed(speed) {
+                        // console.log(player.getAvailablePlaybackRates())
+                        // console.log(player.getPlaybackRate())
+                        player.setPlaybackRate(speed);
+                    }
+                    setInterval(function() {
+                        if(YT.PlayerState.END == player.getPlayerState() && autoNextFlag == true){
+                            const currentIndex = player.getPlaylistIndex();
+                            const nextIndex = (currentIndex + 1) % player.getPlaylist().length;
+                            player.playVideoAt(nextIndex);
+                        }
+                        if(YT.PlayerState.PLAYING == player.getPlayerState() && pauseTime != 0){
+                            const currentTime = player.getCurrentTime();
                             if (currentTime >= pauseTime ) {
                                 player.pauseVideo();
+                                console.log(`Pause and Replay at ${pauseTime}`)
+                                if(autoRepeatFlag){
+                                    player.seekTo(startTime)
+                                    player.playVideo()
+                                    console.log(`Replay at ${startTime}`)
+                                }
+                                
                             }
                         }
-                    }, 1000); // Check every second (1000 milliseconds)
+                    }, 100); // Check every second (1000 milliseconds)
                     
                 }
             } else {
