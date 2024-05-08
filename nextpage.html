@@ -135,6 +135,33 @@
             height: 30px;
             align-items: center;
         }
+        #statusBar {
+            width: 95%;
+            background-color: #ffffff;
+            padding: 5px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: fixed;
+        }
+        progress {
+            width: 80%;
+        }
+        
+        span {
+            font-size: 11px;
+            color: #555;
+        }
+        #currentTime {
+            width: 10%;
+            margin-right: 10px;
+        }
+
+        #totalTime {
+            width: 10%;
+            margin-left: 10px;
+        }
 
     </style>
 </head>
@@ -143,6 +170,12 @@
     <div id="player-container">
         <div id="player"></div>
     </div>
+    <div id="statusBar">
+        <span id="currentTime">0:00</span>
+        <progress id="progressBar" value="0" max="100"></progress>
+        <span id="totalTime">0:00</span>
+    </div>
+    <br>
     <table>
         <tr>
             <th><label>Start at</label></th>
@@ -156,7 +189,7 @@
             <td><input type="number" id="pauseAt" name="pauseAt" ></td>
             <td><input type="checkbox" id="autoRepeat" name="autoRepeat" value="True"></td>
             <td><input type="checkbox" id="autoNext" name="autoNext"  value="True"></td>
-            <td style="border-radius: 5px;" colspan="2">
+            <td style="border-radius: 1px;" colspan="2">
                 <select id="speed" name="speed">
                     <option value="0.5">0.5</option>
                     <option value="0.75">0.75</option>
@@ -166,8 +199,9 @@
                     <option value="2">2</option>
                 </select>
             </td>
-        </tr>
+        </tr>        
     </table>
+    
     <br>
     <!-- Control panel -->
     <div class="control-panel">
@@ -305,23 +339,6 @@
                     const nextButton = document.getElementById('nextButton').addEventListener('click', function() {
                         player.nextVideo();
                     });
-                    const startButton = document.getElementById('startButton').addEventListener('click', function (){
-                        player.playVideo()
-                        if(startTime == 0 ){
-                            startTime = player.getCurrentTime()
-                        }
-                        console.log(`Start at ${startTime}`)
-                    });
-                    const pauseButton = document.getElementById('pauseButton').addEventListener('click', function (){
-                        player.pauseVideo()
-                        pauseTime = player.getCurrentTime()
-                        console.log(`Pause at ${pauseTime}`)
-                    });
-                    const replayButton = document.getElementById('replayButton').addEventListener('click', function (){
-                        player.seekTo(startTime)
-                        player.playVideo()
-                        console.log(`Replay at ${startTime}`)
-                    });
 
                     const startAt = document.getElementById('startAt').addEventListener("focusout", function (){
                         startTime = parseFloat(this.value);
@@ -333,6 +350,30 @@
                         console.log(`set pauseAt = ${pauseTime}`)
                     })
 
+                    const startButton = document.getElementById('startButton').addEventListener('click', function (){
+                        player.playVideo()
+                        if(startTime == 0 ){
+                            startTime = player.getCurrentTime()
+                            const startAt = document.getElementById('startAt')
+                            startAt.value = startTime
+                            console.log(startAt)
+                        }
+                        console.log(`Start at ${startTime}`)
+                    });
+                    const pauseButton = document.getElementById('pauseButton').addEventListener('click', function (){
+                        player.pauseVideo()
+                        pauseTime = player.getCurrentTime()
+                        const pauseAt = document.getElementById('pauseAt')
+                        pauseAt.value = pauseTime
+                        console.log(`Pause at ${pauseTime}`)
+                    });
+                    const replayButton = document.getElementById('replayButton').addEventListener('click', function (){
+                        player.seekTo(startTime)
+                        player.playVideo()
+                        console.log(`Replay at ${startTime}`)
+                    });
+
+                    
                     const autoRepeat = document.getElementById('autoRepeat').addEventListener("change", function(){
                         autoRepeatFlag = (!autoRepeatFlag); 
                         console.log(autoRepeatFlag);
@@ -357,8 +398,31 @@
                         // console.log(player.getPlaybackRate())
                         player.setPlaybackRate(speed);
                     }
+
+                    // Function to update the status bar with current time and progress
+                    function updateStatusBar() {
+                        // Get the current time and duration of the video
+                        const currentTime = player.getCurrentTime();
+                        const totalTime = player.getDuration();
+
+                        // Update current time and total time elements
+                        document.getElementById('currentTime').textContent = formatTime(currentTime);
+                        document.getElementById('totalTime').textContent = formatTime(totalTime);
+
+                        // Update progress bar value
+                        const progressBar = document.getElementById('progressBar');
+                        progressBar.value = (currentTime / totalTime) * 100;
+                    }
+
+                    // Function to format time in mm:ss format
+                    function formatTime(time) {
+                        const minutes = Math.floor(time / 60);
+                        const seconds = Math.floor(time % 60);
+                        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                    setInterval(updateStatusBar, 1000);
                     setInterval(function() {
-                        if(YT.PlayerState.END == player.getPlayerState() && autoNextFlag == true){
+                        if(YT.PlayerState.ENDED == player.getPlayerState() && autoNextFlag == true){
                             const currentIndex = player.getPlaylistIndex();
                             const nextIndex = (currentIndex + 1) % player.getPlaylist().length;
                             player.playVideoAt(nextIndex);
